@@ -1,3 +1,46 @@
+/*
+ * SAFEHANDOVER - SYNTHETIC EXPERIMENT
+ * -----------------------------------
+ * This file generates and evaluates the synthetic experiment used to
+ * compare a simple keyword-based baseline with the structured
+ * SafeHandover workflow.
+ *
+ * PURPOSE:
+ * - Evaluate whether structured safety-action tracking can reduce
+ *   important omissions in handover information.
+ * - Measure detection of unresolved and overdue actions.
+ * - Measure owner and deadline coverage.
+ * - Measure acknowledgement coverage.
+ * - Calculate false omissions and confusion-matrix values.
+ *
+ * DATA:
+ * - The experiment uses synthetic scenarios only.
+ * - No real patient, hospital or clinical information is used.
+ * - The generated cohort contains 160 action scenarios.
+ *
+ * BASELINE:
+ * The baseline uses simple keyword matching in text to identify
+ * possible safety-related actions. This is intentionally simple and
+ * is used only as a comparison baseline, not as a clinical NLP system.
+ *
+ * SAFEHANDOVER APPROACH:
+ * SafeHandover uses structured fields such as status, owner, deadline,
+ * acknowledgement and risk level. These fields allow deterministic
+ * safety rules to identify unresolved and overdue actions.
+ *
+ * EVALUATION:
+ * The experiment calculates confusion-matrix values and derived
+ * metrics so that the comparison can be reproduced consistently.
+ *
+ * REPRODUCIBILITY:
+ * Synthetic rows, calculated metrics and experiment results are
+ * generated programmatically and stored for later inspection.
+ *
+ * LIMITATION:
+ * These results demonstrate the behaviour of the prototype on synthetic
+ * scenarios. They do not represent clinical validation or real-world
+ * hospital performance.
+ */
 import 'dotenv/config';
 import { mkdir,writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
