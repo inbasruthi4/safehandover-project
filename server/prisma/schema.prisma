@@ -1,3 +1,54 @@
+/// SAFEHANDOVER DATABASE SCHEMA
+///
+/// This Prisma schema defines the relational data model used by the
+/// SafeHandover backend.
+///
+/// PURPOSE:
+/// The database stores structured information required to support
+/// pre-operative handover, safety actions, shift transfers, auditability,
+/// consent acknowledgement and prototype evaluation.
+///
+/// MAIN DATA AREAS:
+/// - User accounts and application roles
+/// - Patients and scheduled procedures
+/// - Handover records
+/// - Safety actions
+/// - Subsequent/follow-up events
+/// - Shift information
+/// - Audit logs
+/// - Consent acknowledgements
+/// - Notifications
+/// - Validation feedback
+/// - Synthetic experiment results
+///
+/// DESIGN PRINCIPLE:
+/// Safety-critical workflow information is represented using structured
+/// fields rather than relying only on free-text descriptions. This makes
+/// conditions such as unresolved actions, missing owners and overdue
+/// deadlines easier to detect consistently.
+///
+/// ROLE-BASED ACCESS:
+/// User roles are represented using an enum and are used by the backend
+/// authorization layer to determine which operations each user can perform.
+///
+/// SAFETY ACTION LIFECYCLE:
+/// SafetyAction records contain structured status/risk information and
+/// relationships to users, handovers and follow-up events. This supports
+/// tracking an action from creation through acknowledgement, resolution
+/// or escalation.
+///
+/// AUDITABILITY:
+/// AuditLog records provide a history of important system changes and
+/// support traceability during project review and testing.
+///
+/// PRIVACY:
+/// The project uses synthetic/demo information and is not intended to
+/// store real patient information. The schema is designed for the
+/// academic prototype and is not a clinically validated production
+/// healthcare database.
+///
+/// Prisma is used to generate the database client and manage the
+/// relationship between the Express backend and PostgreSQL.
 generator client {
   provider = "prisma-client-js"
 }
