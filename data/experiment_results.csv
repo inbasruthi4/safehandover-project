@@ -1,0 +1,13 @@
+metric,method,value,sample
+"Unresolved detection rate","Baseline","0.7593984962406015","133"
+"Unresolved detection rate","SafeHandover","1","160"
+"Owner assignment rate","Baseline","0.0875","160"
+"Owner assignment rate","SafeHandover","0.90625","160"
+"Deadline coverage","Baseline","0.0875","160"
+"Deadline coverage","SafeHandover","0.91875","160"
+"Overdue detection rate","Baseline","0.7681159420289855","69"
+"Overdue detection rate","SafeHandover","1","160"
+"Acknowledgement rate","Baseline","0","133"
+"Acknowledgement rate","SafeHandover","0.3007518796992481","160"
+"False omission rate","Baseline","0.24060150375939848","133"
+"False omission rate","SafeHandover","0","160"

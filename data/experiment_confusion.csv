@@ -1,0 +1,5 @@
+metric,count,sample
+"True positives","101","160"
+"False positives","27","160"
+"False negatives","32","160"
+"True negatives","0","160"

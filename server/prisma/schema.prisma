@@ -1,0 +1,167 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+enum Role {
+  ADMIN
+  SURGEON
+  NURSE
+  ANAESTHESIA
+  COORDINATOR
+  VIEWER
+}
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+enum ActionStatus {
+  OPEN
+  IN_PROGRESS
+  BLOCKED
+  RESOLVED
+  OVERDUE
+  ESCALATED
+}
+
+model User {
+  id String @id @default(cuid())
+  name String
+  email String @unique
+  passwordHash String
+  role Role
+  department String
+  active Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  actions SafetyAction[] @relation("Owner")
+  createdActions SafetyAction[] @relation("Creator")
+  handovers Handover[] @relation("HandoverCreator")
+  acknowledgements Handover[] @relation("HandoverAcknowledger")
+  audits AuditLog[]
+  events SubsequentEvent[]
+  consent ConsentAcknowledgement[]
+}
+model Patient {
+  id String @id @default(cuid())
+  syntheticPatientId String @unique
+  displayName String
+  procedure String
+  scheduledDate DateTime
+  status String @default("SCHEDULED")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  handovers Handover[]
+  actions SafetyAction[]
+}
+model Handover {
+  id String @id @default(cuid())
+  patientId String
+  fromShift String
+  toShift String
+  createdBy String
+  handoverDate DateTime @default(now())
+  summary String
+  status String @default("DRAFT")
+  acknowledgedAt DateTime?
+  acknowledgedBy String?
+  outgoingAcknowledgedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  patient Patient @relation(fields: [patientId], references: [id])
+  creator User @relation("HandoverCreator", fields: [createdBy], references: [id])
+  acknowledger User? @relation("HandoverAcknowledger", fields: [acknowledgedBy], references: [id])
+  actions SafetyAction[]
+}
+model SafetyAction {
+  id String @id @default(cuid())
+  handoverId String
+  patientId String
+  title String
+  description String
+  riskLevel RiskLevel
+  category String
+  status ActionStatus @default(OPEN)
+  ownerId String?
+  deadline DateTime?
+  createdBy String
+  resolvedAt DateTime?
+  resolutionNote String?
+  archivedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  handover Handover @relation(fields: [handoverId], references: [id])
+  patient Patient @relation(fields: [patientId], references: [id])
+  owner User? @relation("Owner", fields: [ownerId], references: [id])
+  creator User @relation("Creator", fields: [createdBy], references: [id])
+  events SubsequentEvent[]
+  @@index([status, deadline])
+}
+model SubsequentEvent {
+  id String @id @default(cuid())
+  safetyActionId String
+  eventType String
+  description String
+  createdBy String
+  eventTime DateTime @default(now())
+  createdAt DateTime @default(now())
+  action SafetyAction @relation(fields: [safetyActionId], references: [id])
+  user User @relation(fields: [createdBy], references: [id])
+}
+model Shift {
+  id String @id @default(cuid())
+  name String
+  startTime String
+  endTime String
+  createdBy String
+}
+model AuditLog {
+  id String @id @default(cuid())
+  userId String
+  entityType String
+  entityId String
+  action String
+  previousValue Json?
+  newValue Json?
+  timestamp DateTime @default(now())
+  ipAddress String?
+  user User @relation(fields: [userId], references: [id])
+  @@index([entityType, entityId])
+}
+model ConsentAcknowledgement {
+  id String @id @default(cuid())
+  userId String
+  acknowledgementType String
+  acknowledged Boolean
+  timestamp DateTime @default(now())
+  user User @relation(fields: [userId], references: [id])
+}
+model Notification {
+  id String @id @default(cuid())
+  userId String?
+  title String
+  message String
+  read Boolean @default(false)
+  createdAt DateTime @default(now())
+}
+model ValidationFeedback {
+  id String @id @default(cuid())
+  role String
+  taskTested String
+  rating Int
+  comment String
+  observedIssue String?
+  createdAt DateTime @default(now())
+}
+model ExperimentResult {
+  id String @id
+  metric String
+  method String
+  value Float
+  sampleSize Int
+  generatedAt DateTime @default(now())
+}

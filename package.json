@@ -1,0 +1,8 @@
+{
+  "name": "safehandover",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {"install-all":"npm install && npm install --prefix server && npm install --prefix client", "predev":"npm run build", "dev":"concurrently -k -n api,web -c cyan,green \"npm run dev --prefix server\" \"npm run preview --prefix client\"", "server":"npm run dev --prefix server", "client":"npm run dev --prefix client", "db:setup":"npm run db:generate --prefix server && npm run db:migrate --prefix server", "db:reset":"npm run db:reset --prefix server", "seed":"npm run seed --prefix server && npm run experiment --prefix server", "experiment":"npm run experiment --prefix server", "test":"npm run test --prefix server && npm run test --prefix client", "build":"npm run build --prefix client"},
+  "devDependencies": {"concurrently":"^9.1.2"}
+}
