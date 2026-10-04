@@ -1,3 +1,53 @@
+/*
+ * SAFEHANDOVER - BACKEND API
+ * --------------------------
+ * This file contains the main Express application and REST API routes
+ * for the SafeHandover safety-focused handover prototype.
+ *
+ * RESPONSIBILITIES:
+ * 1. Authentication using JWT tokens.
+ * 2. Role-based authorization and permission checking.
+ * 3. Request validation using Zod schemas.
+ * 4. Handover and safety-action management.
+ * 5. Safety-rule evaluation for unresolved, overdue, blocked and
+ *    incomplete safety actions.
+ * 6. Shift-change handling and transfer of unresolved actions.
+ * 7. Audit logging for important system changes.
+ * 8. Dashboard, metrics and health-check endpoints.
+ * 9. Consistent API success and error responses.
+ *
+ * SECURITY:
+ * - Passwords are hashed before storage.
+ * - JWT is used for authenticated API requests.
+ * - Authorization is enforced on the backend, not only in the UI.
+ * - Zod validation prevents malformed request data from reaching
+ *   application logic.
+ * - Sensitive internal error details are not returned to API clients.
+ *
+ * ERROR HANDLING:
+ * - Async route failures are forwarded to the central error handler.
+ * - Validation errors return controlled 4xx responses.
+ * - Authentication and authorization failures return appropriate
+ *   HTTP status codes.
+ * - Database failures are handled without exposing internal details.
+ * - Unknown routes return a consistent NOT_FOUND response.
+ *
+ * SAFETY RULE ENGINE:
+ * The safety evaluation is deterministic and rule-based. It identifies
+ * conditions such as unresolved actions, overdue deadlines, missing
+ * owners/deadlines, blocked actions and high-risk unresolved items.
+ * These rules support workflow safety and do not make clinical decisions.
+ *
+ * AUDITABILITY:
+ * Important create/update/resolve/escalation operations are recorded
+ * through audit logging so that changes can be traced during review.
+ *
+ * MAINTAINABILITY:
+ * Helper functions are used for repeated API response formatting,
+ * authentication, authorization and asynchronous error handling.
+ * Keeping these responsibilities centralized makes the API easier to
+ * test and maintain.
+ */
 import express from 'express';
 import cors from 'cors';
 import bcrypt from 'bcryptjs';
@@ -9,14 +59,33 @@ export const prisma = new PrismaClient();
 export const app = express();
 app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173' }));
 app.use(express.json({ limit: '200kb' }));
+// Centralizes asynchronous route error forwarding so rejected promises
+// reach Express error-handling middleware instead of becoming unhandled.
 const wrap = fn => (req,res,next) => Promise.resolve(fn(req,res,next)).catch(next);
+// Standardizes successful API responses so the frontend receives
+// a consistent success flag, payload, and HTTP status code.
 const ok = (res,data,status=200) => res.status(status).json({success:true,data});
+// Standardizes API errors with an HTTP status, machine-readable code,
+// and safe user-facing message.
 const fail = (res,status,code,message) => res.status(status).json({success:false,error:{code,message}});
+// Defines backend permissions for each role. These rules are enforced
+// by API middleware; frontend visibility alone is not authorization.
 const permissions={ADMIN:['*'],SURGEON:['read','action:create','action:update','action:resolve','event:create'],NURSE:['read','handover:create','handover:update','action:create','action:update','event:create','action:resolve'],ANAESTHESIA:['read','action:update','event:create'],COORDINATOR:['read','handover:create','handover:update','action:create','action:update','action:resolve','action:escalate','action:archive','event:create'],VIEWER:['read']};
+// Verifies the bearer token and attaches the authenticated user's claims
+// to the request. Missing, invalid, or expired tokens are rejected.
 function auth(req,res,next){const token=(req.headers.authorization||'').replace(/^Bearer\s+/i,'');if(!token)return fail(res,401,'UNAUTHORIZED','Authentication required.');try{req.user=jwt.verify(token,process.env.JWT_SECRET||'local-demo-secret-change-me');next();}catch{return fail(res,401,'UNAUTHORIZED','Session is invalid or expired.');}}
+// Enforces the permission required by a protected route and rejects
+// requests from authenticated users whose roles lack that permission.
 function allow(permission){return(req,res,next)=>{if(!req.user)return fail(res,401,'UNAUTHORIZED','Authentication required.');if(!permissions[req.user.role]?.includes('*')&&!permissions[req.user.role]?.includes(permission))return fail(res,403,'FORBIDDEN','You do not have permission for this operation.');next();}}
+// Records significant changes with the actor, affected entity, operation,
+// and available before/after values to support later review and traceability.
 async function audit(tx,req,entityType,entityId,action,previousValue,newValue){await tx.auditLog.create({data:{userId:req.user.id,entityType,entityId,action,previousValue:previousValue??undefined,newValue:newValue??undefined,ipAddress:req.ip}})}
+// Checks both API availability and database connectivity. A database
+// failure returns HTTP 503 so callers can distinguish degraded service
+// from a healthy database-backed application.
 app.get('/api/health',wrap(async(_req,res)=>{try{await prisma.$queryRaw`SELECT 1`;ok(res,{status:'ok',database:'connected'});}catch{res.status(503).json({success:false,data:{status:'degraded',database:'unavailable'}});}}));
+// Validates registration data, prevents duplicate email registration,
+// and hashes the password before storing the new account.
 app.post('/api/auth/register',wrap(async(req,res)=>{const v=z.object({name:z.string().min(2),email:z.string().email(),password:z.string().min(10),role:z.enum(['ADMIN','SURGEON','NURSE','ANAESTHESIA','COORDINATOR','VIEWER']).optional(),department:z.string().min(2)}).safeParse(req.body);if(!v.success)return fail(res,400,'VALIDATION_ERROR','Registration fields are invalid.');const p=v.data;if(await prisma.user.findUnique({where:{email:p.email}}))return fail(res,409,'EMAIL_EXISTS','An account with this email already exists.');const user=await prisma.user.create({data:{name:p.name,email:p.email,role:'VIEWER',department:p.department,passwordHash:await bcrypt.hash(p.password,12)}});ok(res,{id:user.id,email:user.email},201);}));
 app.post('/api/auth/login',wrap(async(req,res)=>{const v=z.object({email:z.string().email(),password:z.string().min(1)}).safeParse(req.body);if(!v.success)return fail(res,400,'VALIDATION_ERROR','Email and password are required.');const user=await prisma.user.findUnique({where:{email:v.data.email}});if(!user||!user.active||!await bcrypt.compare(v.data.password,user.passwordHash)){console.warn(JSON.stringify({event:'auth_failure',email:v.data.email,ip:req.ip}));return fail(res,401,'INVALID_CREDENTIALS','Email or password is incorrect.');}const token=jwt.sign({id:user.id,role:user.role,name:user.name,email:user.email},process.env.JWT_SECRET||'local-demo-secret-change-me',{expiresIn:'8h'});ok(res,{token,user:{id:user.id,name:user.name,email:user.email,role:user.role,department:user.department}});}));
 app.get('/api/auth/me',auth,wrap(async(req,res)=>ok(res,{user:await prisma.user.findUnique({where:{id:req.user.id},select:{id:true,name:true,email:true,role:true,department:true}})})));
