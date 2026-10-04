@@ -16,6 +16,113 @@ Requirements: Node.js 20+, Docker Desktop (or PostgreSQL 16), and npm.
 Demo accounts all use `DemoSafe2026!`: `nurse@safehandover.demo`, `coordinator@safehandover.demo`, `admin@safehandover.demo`, `surgeon@safehandover.demo`, `anaesthesia@safehandover.demo`, `viewer@safehandover.demo`.
 
 Useful commands: `npm run server`, `npm run client`, `npm run test`, `npm run build`. PostgreSQL-backed flows need the database available. Seed data is synthetic and can be reset with `npm run db:reset` (destructive to the local demo database).
+## Testing
+
+SafeHandover includes automated backend/API testing for important authentication, authorization, validation and safety-action workflows.
+
+### Run Tests
+
+From the server directory:
+
+```bash
+npm test
+```
+
+Testing covers successful operations as well as invalid requests, unauthorized operations and important safety-rule conditions.
+
+Detailed testing documentation is available in:
+
+`docs/TESTING.md`
+
+---
+
+## Error Handling
+
+SafeHandover uses layered error handling across request validation, authentication, authorization, API operations, database operations and frontend interactions.
+
+The application handles invalid input, authentication failures, forbidden operations, missing resources and backend/database failures.
+
+Zod validation is used for request validation and backend role-based authorization protects restricted operations.
+
+Detailed error-handling documentation is available in:
+
+`docs/ERROR_HANDLING.md`
+
+---
+
+## Database Schema
+
+SafeHandover uses PostgreSQL with Prisma ORM.
+
+The database represents the structured handover workflow using entities for users and roles, handovers, safety actions, shifts, acknowledgements, subsequent events and audit information.
+
+The relationships allow safety actions to be associated with responsible users and handovers while maintaining acknowledgement, follow-up and audit information.
+
+The Prisma schema is available in:
+
+`server/prisma/schema.prisma`
+
+---
+
+## API Documentation
+
+The backend exposes REST API endpoints for authentication, handovers, safety actions, shifts, metrics and dashboard information.
+
+### Authentication
+
+```text
+POST /api/auth/login
+GET  /api/auth/me
+```
+
+### Handovers
+
+```text
+GET  /api/handovers
+POST /api/handovers
+```
+
+### Safety Actions
+
+```text
+GET  /api/actions
+POST /api/actions
+PUT  /api/actions/:id
+POST /api/actions/:id/acknowledge
+POST /api/actions/:id/resolve
+POST /api/actions/:id/escalate
+POST /api/actions/:id/events
+```
+
+### Shifts
+
+```text
+POST /api/shifts/change
+GET  /api/shifts/:id/unresolved
+```
+
+### Dashboard and Monitoring
+
+```text
+GET /api/metrics
+GET /api/dashboard/summary
+GET /api/health
+```
+
+Authentication and role-based authorization are applied to protected operations.
+
+---
+
+## Documentation
+
+Additional technical documentation:
+
+* [Testing Documentation](docs/TESTING.md)
+* [Error Handling Documentation](docs/ERROR_HANDLING.md)
+* [Prisma Database Schema](server/prisma/schema.prisma)
+
+These documents provide additional information about testing, failure handling and the database structure used by SafeHandover.
+
 
 ## Prototype scope
 
